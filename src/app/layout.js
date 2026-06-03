@@ -25,7 +25,8 @@ export default function RootLayout({ children }) {
       data-theme="dark"
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[#0a0a0a] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-white">
+      {/* Removed the pink/purple radial gradient from the body */}
+      <body className="flex min-h-full flex-col bg-[#0a0a0a] text-white">
         <NavBar />
         <main className="flex-1">{children}</main>
         <Footer />

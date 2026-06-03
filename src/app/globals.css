@@ -1,2 +1,17 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+
+:root,
+[data-theme="dark"],
+html,
+body {
+  --heroui-background: 0 0% 4% !important;
+  --heroui-content1: 0 0% 6% !important;
+  background-color: #0a0a0a !important;
+  color: white;
+}
+
+body {
+  background-color: #0a0a0a;
+  color: white;
+}
