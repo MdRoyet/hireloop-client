@@ -5,4 +5,5 @@ export const authClient = createAuthClient({
 });
 
 // Destructure cleanly from the configured instance
-export const { signIn, signUp, useSession, forgotPassword } = authClient;
+export const { signIn, signUp, useSession, forgotPassword, signOut } =
+  authClient;
