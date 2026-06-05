@@ -30,4 +30,14 @@ export const auth = betterAuth({
   database: mongodbAdapter(db, {
     client,
   }),
+
+  // FIXED: Standardized Better-Auth dynamic schema parameters
+  user: {
+    fields: {
+      role: {
+        type: "string",
+        defaultValue: "job_seeker", // This matches your front-end selection block
+      },
+    },
+  },
 });

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signUp } from "@/lib/auth-client"; // Fixed configuration import
+import { signUp } from "@/lib/auth-client";
 
 export default function SignUp() {
   const router = useRouter();
@@ -11,22 +11,48 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
+
+  // Added role configuration to our unified form object
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    role: "job_seeker", // Default state selection matching backend rules
   });
+
+  const roles = [
+    {
+      id: "job_seeker",
+      label: "Job Seeker",
+      desc: "Find your next career leap",
+    },
+    {
+      id: "recruiter",
+      label: "Recruiter",
+      desc: "Post jobs & hire top talent",
+    },
+    { id: "admin", label: "Admin", desc: "Platform manager portal access" },
+  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Call Better-Auth with your configuration parameters
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      setLoading(false);
+      return;
+    }
+
+    // Call Better-Auth with the user fields + metadata role bundle
     const { data, error: authError } = await signUp.email({
       email: formData.email,
       password: formData.password,
       name: formData.name,
+      metadata: {
+        role: formData.role, // Saves directly into your MongoDB users collection
+      },
       callbackURL: "/auth/signin",
     });
 
@@ -36,11 +62,9 @@ export default function SignUp() {
       return;
     }
 
-    // Success notification triggers
     setShowToast(true);
     setLoading(false);
 
-    // Give them time to read the toast, then push route changes
     setTimeout(() => {
       router.push("/auth/signin");
     }, 2000);
@@ -94,7 +118,7 @@ export default function SignUp() {
         style={{ backgroundColor: "#2563eb" }}
       />
 
-      <main className="w-full max-w-md bg-[#0f0f11] border border-white/5 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+      <main className="w-full max-w-md bg-[#0f0f11] border border-white/5 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 my-8">
         <header className="text-center">
           <h2 className="text-2xl font-semibold tracking-tight text-white mb-1">
             Create your account
@@ -111,6 +135,31 @@ export default function SignUp() {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Custom Pill Role Selection Grid Component */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              I am joining as a...
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {roles.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, role: r.id })}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    formData.role === r.id
+                      ? "border-blue-500 bg-blue-500/10 text-white shadow-lg shadow-blue-500/5"
+                      : "border-white/5 bg-black/20 text-gray-400 hover:bg-white/5 hover:text-gray-200"
+                  }`}
+                >
+                  <span className="text-sm font-semibold tracking-tight">
+                    {r.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
               Full Name
@@ -161,7 +210,7 @@ export default function SignUp() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 text-gray-500 hover:text-gray-300 outline-none cursor-pointer"
+                className="absolute right-3.5 text-gray-500 hover:text-gray-300 outline-none cursor-pointer flex items-center justify-center"
               >
                 {showPassword ? (
                   <svg
