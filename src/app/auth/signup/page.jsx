@@ -50,9 +50,7 @@ export default function SignUp() {
       email: formData.email,
       password: formData.password,
       name: formData.name,
-      metadata: {
-        role: formData.role, // Saves directly into your MongoDB users collection
-      },
+      role: formData.role, // 🚀 Pass it directly here, NOT inside metadata!
       callbackURL: "/auth/signin",
     });
 

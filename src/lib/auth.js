@@ -31,12 +31,13 @@ export const auth = betterAuth({
     client,
   }),
 
-  // FIXED: Standardized Better-Auth dynamic schema parameters
+  // Instructs Better Auth to accept 'role' on registration and write it to MongoDB
+  // THIS IS THE CORRECTED SCHEMA BLOCK
   user: {
-    fields: {
+    additionalFields: {
       role: {
-        type: "string",
-        defaultValue: "job_seeker", // This matches your front-end selection block
+        type: "string", // This is explicitly required by Better Auth
+        defaultValue: "job_seeker",
       },
     },
   },
