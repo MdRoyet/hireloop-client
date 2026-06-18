@@ -3,22 +3,31 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSession, authClient } from "@/lib/auth-client"; // Using your Better-Auth configuration
+import { usePathname } from "next/navigation";
+import { useSession, authClient } from "@/lib/auth-client";
 
 export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Destructure the live session state straight from your MongoDB adapter layer
   const { data: session, isPending } = useSession();
+  const pathname = usePathname();
+
+  // 1. Define all the roles that get their own private dashboard layouts
+  const dashboardRoles = ["job_seeker", "recruiter", "admin"];
+
+  // 2. Check if they have a role OR if they are manually navigating to a dashboard URL
+  const hasDashboardAccess = dashboardRoles.includes(session?.user?.role);
+  const isDashboardRoute = pathname.includes("/dashboard");
+
+  // 3. If they are logged in or on a dashboard route, hide this public navbar completely
+  if (hasDashboardAccess || isDashboardRoute) {
+    return null;
+  }
 
   const handleSignOut = async () => {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          // Force an immediate router navigation to the sign-in portal
           window.location.href = "/auth/signin";
-          // Alternatively, if you imported `useRouter` from 'next/navigation':
-          // router.push("/auth/signin");
         },
       },
     });

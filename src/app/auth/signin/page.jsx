@@ -20,7 +20,23 @@ export default function SignIn() {
     const { data, error: authError } = await signIn.email({
       email: formData.email,
       password: formData.password,
-      callbackURL: "/", // Sends user to home page after verification
+      // 🚀 Use fetchOptions to hijack the success state and stop the default homepage redirect
+      fetchOptions: {
+        onSuccess: (ctx) => {
+          // Extract the user's role directly from the context payload
+          const userRole = ctx.data?.user?.role;
+
+          // Route them to your exact folder structure
+          if (userRole === "recruiter") {
+            router.push("/dashboard/recruiter");
+          } else if (userRole === "admin") {
+            router.push("/dashboard/admin");
+          } else {
+            // Default fallback for Job Seekers
+            router.push("/dashboard/job-seeker");
+          }
+        },
+      },
     });
 
     if (authError) {
@@ -28,8 +44,6 @@ export default function SignIn() {
       setLoading(false);
       return;
     }
-
-    router.push("/");
   };
 
   return (
