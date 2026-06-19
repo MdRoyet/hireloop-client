@@ -38,7 +38,7 @@ export default function SignIn() {
       router.push("/dashboard/admin");
     } else {
       // Default fallback for Job Seekers
-      router.push("/dashboard/job-seeker");
+      router.push("/");
     }
   };
 
