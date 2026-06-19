@@ -14,6 +14,7 @@ import {
   Switch,
 } from "@heroui/react";
 import { Briefcase, Globe, ArrowRight } from "@gravity-ui/icons";
+import { createJobAction } from "@/lib/actions/jobs"; // 🚀 UPDATED IMPORT PATH TO MATCH YOUR FOLDER STRUCTURE
 
 export default function PostJobPage() {
   const router = useRouter();
@@ -23,7 +24,6 @@ export default function PostJobPage() {
   const [isRemote, setIsRemote] = useState(false);
   const [serverError, setServerError] = useState("");
 
-  // Styling preset for Hero UI Text Inputs to match your premium dark theme
   const inputStyles = {
     label: "text-sm font-medium text-gray-300 pb-1",
     input: "text-white placeholder:text-gray-600 text-sm",
@@ -32,7 +32,6 @@ export default function PostJobPage() {
     innerWrapper: "pb-0",
   };
 
-  // Reusable classes for the new v3 Select Trigger
   const selectTriggerStyles =
     "bg-black/40 border border-white/10 hover:border-white/20 data-[focus=true]:border-blue-500 data-[focus=true]:bg-black/60 shadow-none transition-all rounded-xl py-2.5 px-4 text-white w-full flex items-center justify-between";
 
@@ -51,13 +50,19 @@ export default function PostJobPage() {
     try {
       console.log("Submitting new job to database:", data);
 
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const result = await createJobAction(data);
 
-      // Redirect to the recruiter dashboard upon success
+      if (!result.success) {
+        setServerError(
+          result.error || "Failed to post the job. Please try again.",
+        );
+        setLoading(false);
+        return;
+      }
+
       router.push("/dashboard/recruiter");
     } catch (error) {
-      setServerError("Failed to post the job. Please try again.");
+      setServerError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -96,7 +101,6 @@ export default function PostJobPage() {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-2">
-            {/* HERO UI v3 SELECT: Category */}
             <Select name="category" isRequired className="w-full">
               <Label className="text-sm font-medium text-gray-300 pb-1 block">
                 Job Category
@@ -129,7 +133,6 @@ export default function PostJobPage() {
               </Select.Popover>
             </Select>
 
-            {/* HERO UI v3 SELECT: Job Type */}
             <Select name="type" isRequired className="w-full">
               <Label className="text-sm font-medium text-gray-300 pb-1 block">
                 Job Type
@@ -168,7 +171,6 @@ export default function PostJobPage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {/* HERO UI v3 SELECT: Currency */}
             <Select
               name="currency"
               defaultSelectedKeys={["usd"]}
@@ -224,14 +226,11 @@ export default function PostJobPage() {
               onChange={setIsRemote}
               className="w-full group"
             >
-              {/* flex-row-reverse safely pushes the Control to the right, and the Text/Icon to the left */}
               <Switch.Content className="flex flex-row-reverse w-full items-center justify-between p-4 rounded-2xl border border-white/5 bg-[#161618] hover:bg-[#1c1c1e] transition-all duration-300 cursor-pointer shadow-sm active:scale-[0.99]">
-                {/* 1. Toggle Control (Renders on the right) */}
                 <Switch.Control className="bg-black/60 border border-white/10 data-[selected=true]:bg-blue-500 transition-colors shadow-inner shrink-0">
                   <Switch.Thumb className="shadow-md" />
                 </Switch.Control>
 
-                {/* 2. Text & Icon (Renders on the left) */}
                 <div className="flex items-center gap-4">
                   <div className="h-11 w-11 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shrink-0 transition-all duration-300 group-data-[selected=true]:bg-blue-500/20 group-data-[selected=true]:scale-105">
                     <Globe className="h-5 w-5 text-blue-400" />

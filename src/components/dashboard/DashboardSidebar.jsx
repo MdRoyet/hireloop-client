@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation"; // 🚀 Imports path checker to track current page
 import { useSession } from "@/lib/auth-client";
 
 export function DashboardSidebar() {
   const { data: session, isPending } = useSession();
+  const pathname = usePathname(); // 🚀 Reads the current browser URL
 
   const getInitials = (name) => {
     if (!name) return "U";
@@ -12,7 +14,7 @@ export function DashboardSidebar() {
   };
 
   return (
-    <aside className="w-[260px] h-screen sticky top-0 shrink-0 border-r border-white/10 bg-[#0a0a0a] flex flex-col">
+    <aside className="w-[260px] h-screen sticky top-0 shrink-0 border-r border-white/10 bg-[#0a0a0a] flex flex-col text-left">
       {/* Logo */}
       <div className="h-[70px] flex items-center px-6">
         <Link href="/" className="text-2xl font-bold tracking-tight text-white">
@@ -44,21 +46,48 @@ export function DashboardSidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation Links Grid Pipeline */}
       <nav className="flex-1 mt-6 flex flex-col gap-1 px-3">
-        <NavItem active icon={<DashboardIcon />} label="Dashboard" />
-        <NavItem icon={<CompanyIcon />} label="My Company" />
-        <NavItem icon={<ManageJobsIcon />} label="Manage Jobs" />
-        <NavItem icon={<ApplicationsIcon />} label="Applications" />
-        <NavItem icon={<SettingsIcon />} label="Settings" />
+        <NavItem
+          href="/dashboard/recruiter"
+          active={pathname === "/dashboard/recruiter"}
+          icon={<DashboardIcon />}
+          label="Home"
+        />
+        <NavItem
+          href="/dashboard/recruiter/jobs"
+          active={pathname === "/dashboard/recruiter/jobs"}
+          icon={<CompanyIcon />}
+          label="Jobs"
+        />
+        <NavItem
+          href="/dashboard/recruiter/jobs/new"
+          active={pathname === "/dashboard/recruiter/jobs/new"}
+          icon={<ManageJobsIcon />}
+          label="Post Job"
+        />
+        <NavItem
+          href="/dashboard/recruiter/company"
+          active={pathname === "/dashboard/recruiter/company"}
+          icon={<CompanyIcon />}
+          label="Company"
+        />
+        <NavItem
+          href="/dashboard/recruiter/settings"
+          active={pathname === "/dashboard/recruiter/settings"}
+          icon={<SettingsIcon />}
+          label="Settings"
+        />
       </nav>
     </aside>
   );
 }
 
-function NavItem({ active, icon, label }) {
+// 🚀 NavItem converted from a standard button directly into a Next.js Link component
+function NavItem({ href, active, icon, label }) {
   return (
-    <button
+    <Link
+      href={href}
       className={`flex items-center gap-3.5 px-4 py-3 rounded-lg text-sm font-medium transition-all group relative w-full text-left cursor-pointer ${
         active
           ? "bg-[#1c1c1e] text-white"
@@ -74,9 +103,11 @@ function NavItem({ active, icon, label }) {
       {active && (
         <div className="absolute right-0 top-1/2 -translate-y-1/2 h-[60%] w-1 rounded-l-full bg-white"></div>
       )}
-    </button>
+    </Link>
   );
 }
+
+// ----------------- SVG ICON MODULES -----------------
 
 function DashboardIcon() {
   return (
@@ -95,6 +126,7 @@ function DashboardIcon() {
     </svg>
   );
 }
+
 function CompanyIcon() {
   return (
     <svg
@@ -112,6 +144,7 @@ function CompanyIcon() {
     </svg>
   );
 }
+
 function ManageJobsIcon() {
   return (
     <svg
@@ -129,6 +162,7 @@ function ManageJobsIcon() {
     </svg>
   );
 }
+
 function ApplicationsIcon() {
   return (
     <svg
@@ -146,6 +180,7 @@ function ApplicationsIcon() {
     </svg>
   );
 }
+
 function SettingsIcon() {
   return (
     <svg
