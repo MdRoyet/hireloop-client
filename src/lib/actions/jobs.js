@@ -1,73 +1,106 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-/**
- * Sends the raw job form data directly to the Express backend to save in MongoDB
- * @param {Object} jobData - Synced data object from the client UI form
- */
 export async function createJobAction(jobData) {
   try {
     const response = await fetch(`${API_URL}/api/jobs`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(jobData),
+    });
+    const result = await response.json();
+    if (!response.ok) return { success: false, error: result.error };
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: "Server connection failed." };
+  }
+}
+
+export async function getJobsAction(recruiterId = null) {
+  try {
+    const url = recruiterId
+      ? `${API_URL}/api/jobs?recruiterId=${recruiterId}&t=${Date.now()}`
+      : `${API_URL}/api/jobs?t=${Date.now()}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
     });
 
     const result = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error:
-          result.error || "An error occurred while saving to the database.",
-      };
-    }
-
-    return {
-      success: true,
-      data: result,
-    };
+    if (!response.ok) return { success: false, error: result.error };
+    return { success: true, data: result.data };
   } catch (error) {
-    console.error("❌ Network Error inside createJobAction:", error);
+    return { success: false, error: "Server sync failed." };
+  }
+}
+
+export async function getRecruiterDashboardStats(recruiterId = null) {
+  try {
+    const url = recruiterId
+      ? `${API_URL}/api/dashboard/recruiter-stats?recruiterId=${recruiterId}&t=${Date.now()}`
+      : `${API_URL}/api/dashboard/recruiter-stats?t=${Date.now()}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+    if (!response.ok) return { success: false, error: result.error };
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("❌ Stats processing network crash:", error);
     return {
       success: false,
-      error: "Could not connect to the backend server.",
+      error: "Could not fetch active summary calculations.",
     };
   }
 }
 
-/**
- * 🚀 GET ACTION: Fetches all listed jobs from the Express API
- */
-export async function getJobsAction() {
+export async function getGlobalJobsAction(filters = {}) {
   try {
-    const response = await fetch(`${API_URL}/api/jobs`, {
+    const queryParams = new URLSearchParams();
+
+    if (filters.search) queryParams.append("search", filters.search);
+    if (filters.category) queryParams.append("category", filters.category);
+    if (filters.type) queryParams.append("type", filters.type);
+    if (filters.isRemote) queryParams.append("isRemote", "true");
+
+    queryParams.append("t", Date.now());
+
+    const url = `${API_URL}/api/jobs?${queryParams.toString()}`;
+
+    const response = await fetch(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store", // Ensures fresh data pulling on every dashboard reload
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
     });
 
     const result = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: result.error || "Failed to parse job information from server.",
-      };
-    }
-
-    return {
-      success: true,
-      data: result.data, // Contains raw MongoDB array
-    };
+    if (!response.ok) return { success: false, error: result.error };
+    return { success: true, data: result.data };
   } catch (error) {
-    console.error("❌ Network Error inside getJobsAction:", error);
-    return {
-      success: false,
-      error: "Could not fetch data. Check if backend server is online.",
-    };
+    return { success: false, error: "Server sync failed." };
+  }
+}
+
+export async function getJobByIdAction(jobId) {
+  try {
+    const response = await fetch(
+      `${API_URL}/api/jobs/${jobId}?t=${Date.now()}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      },
+    );
+
+    const result = await response.json();
+    if (!response.ok) return { success: false, error: result.error };
+    return { success: true, data: result.data };
+  } catch (error) {
+    return { success: false, error: "Server sync failed." };
   }
 }

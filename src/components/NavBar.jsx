@@ -11,15 +11,11 @@ export default function NavBar() {
   const { data: session, isPending } = useSession();
   const pathname = usePathname();
 
-  // 1. Define all the roles that get their own private dashboard layouts
-  const dashboardRoles = ["job_seeker", "recruiter", "admin"];
+  // 1. Check if the user is actively navigating a dashboard URL
+  const isDashboardRoute = pathname?.startsWith("/dashboard");
 
-  // 2. Check if they have a role OR if they are manually navigating to a dashboard URL
-  const hasDashboardAccess = dashboardRoles.includes(session?.user?.role);
-  const isDashboardRoute = pathname.includes("/dashboard");
-
-  // 3. If they are logged in or on a dashboard route, hide this public navbar completely
-  if (hasDashboardAccess || isDashboardRoute) {
+  // 2. Only hide the public navbar if they are actually INSIDE the dashboard layout
+  if (isDashboardRoute) {
     return null;
   }
 
@@ -31,6 +27,14 @@ export default function NavBar() {
         },
       },
     });
+  };
+
+  // Helper to determine where the "Dashboard" button should take the logged-in user
+  const getDashboardLink = () => {
+    const role = session?.user?.role;
+    if (role === "recruiter") return "/dashboard/recruiter";
+    if (role === "admin") return "/dashboard/admin";
+    return "/dashboard/job_seeker"; // Default fallback
   };
 
   return (
@@ -79,7 +83,7 @@ export default function NavBar() {
           </li>
         </ul>
 
-        {/* Far Right Desktop Actions (Conditionals driven by Better-Auth) */}
+        {/* Far Right Desktop Actions */}
         <div className="hidden md:flex items-center gap-5">
           <div className="h-5 w-[1px] bg-neutral-700/80"></div>
 
@@ -87,8 +91,16 @@ export default function NavBar() {
             // Skeleton Loader State to prevent UI layout shift flashes
             <div className="h-8 w-24 rounded-lg bg-neutral-800 animate-pulse" />
           ) : session ? (
-            // Authenticated Session State UI
+            // 🚀 Authenticated Session State UI
             <div className="flex items-center gap-4">
+              {/* Added a quick link back to their specific dashboard */}
+              <Link
+                href={getDashboardLink()}
+                className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                Dashboard
+              </Link>
+
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5">
                 <div className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-bold flex items-center justify-center uppercase">
                   {session.user?.name ? session.user.name[0] : "U"}
@@ -105,7 +117,7 @@ export default function NavBar() {
               </button>
             </div>
           ) : (
-            // Guest State UI (No Session Found in MongoDB)
+            // Guest State UI (No Session Found)
             <>
               <Link
                 href="/auth/signin"
@@ -125,7 +137,7 @@ export default function NavBar() {
 
         {/* Mobile Menu Toggle Button */}
         <button
-          className="md:hidden ml-auto text-neutral-300 focus:outline-none"
+          className="md:hidden ml-auto text-neutral-300 focus:outline-none cursor-pointer"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle menu"
         >
@@ -198,12 +210,21 @@ export default function NavBar() {
                       {session.user?.name}
                     </span>
                   </div>
+
+                  <Link
+                    href={getDashboardLink()}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="w-full text-left py-2 px-2 text-sm font-medium text-indigo-400 hover:text-indigo-300"
+                  >
+                    Go to Dashboard
+                  </Link>
+
                   <button
                     onClick={() => {
                       handleSignOut();
                       setIsMenuOpen(false);
                     }}
-                    className="w-full text-left py-2 px-2 text-sm font-medium text-red-400 hover:text-red-300"
+                    className="w-full text-left py-2 px-2 text-sm font-medium text-red-400 hover:text-red-300 cursor-pointer"
                   >
                     Sign Out
                   </button>

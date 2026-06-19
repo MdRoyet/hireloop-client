@@ -10,18 +10,33 @@ import {
   MapPin,
   Calendar,
   Persons,
-} from "@gravity-ui/icons"; // 🚀 FIXED: UserGroup changed to Persons
+} from "@gravity-ui/icons";
 import { getJobsAction } from "@/lib/actions/jobs";
+import { useSession } from "@/lib/auth-client";
 
 export default function RecruiterJobsDashboard() {
+  const { data: session, isPending } = useSession();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // 1. Wait until the authentication check is completely finished
+    if (isPending) return;
+
+    // 🚀 2. STRICT GUARD: If there is no user ID, DO NOT fetch jobs yet!
+    // This prevents the dashboard from accidentally asking for the "global" list.
+    if (!session?.user?.id) {
+      setLoading(false);
+      return;
+    }
+
     async function loadJobs() {
       try {
-        const response = await getJobsAction();
+        // Now we are 100% guaranteed to have the recruiter's exact ID
+        const recruiterId = session.user.id;
+        const response = await getJobsAction(recruiterId);
+
         if (response.success) {
           setJobs(response.data);
         } else {
@@ -33,10 +48,10 @@ export default function RecruiterJobsDashboard() {
         setLoading(false);
       }
     }
-    loadJobs();
-  }, []);
 
-  // Helper to turn raw dates into scannable strings safely
+    loadJobs();
+  }, [session, isPending]); // Re-runs safely when session finally populates
+
   const formatDate = (dateInput) => {
     if (!dateInput) return "No deadline";
     const date = new Date(dateInput);
@@ -51,7 +66,6 @@ export default function RecruiterJobsDashboard() {
 
   return (
     <div className="max-w-7xl w-full mx-auto pb-12 pt-4 animate-in fade-in duration-500 text-left">
-      {/* Dashboard Top Navigation Control Panel Bar */}
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 pb-6 border-b border-white/5">
         <div>
           <h1 className="text-3xl font-medium text-white tracking-tight mb-2">
@@ -73,11 +87,11 @@ export default function RecruiterJobsDashboard() {
       </header>
 
       {/* CORE CONTENT RENDER ENGINE GRID CONTAINER */}
-      {loading ? (
+      {loading || isPending ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 w-full">
           <Spinner size="lg" color="white" />
           <p className="text-sm text-gray-500 animate-pulse">
-            Syncing data from pipeline...
+            Syncing your private data...
           </p>
         </div>
       ) : error ? (
@@ -106,7 +120,6 @@ export default function RecruiterJobsDashboard() {
           </Button>
         </div>
       ) : (
-        /* 3-Column Dashboard Responsive Layout Grid Box */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
           {jobs.map((job) => {
             const remoteFlag = job.isRemote === "true" || job.isRemote === true;
@@ -116,7 +129,6 @@ export default function RecruiterJobsDashboard() {
                 key={job._id}
                 className="group p-6 bg-[#161618] border border-white/5 rounded-2xl flex flex-col justify-between min-h-[290px] transition-all duration-300 hover:border-white/10 hover:bg-[#1c1c1e] shadow-xl relative"
               >
-                {/* TOP CARDS ROW: Icons and System Status Tags */}
                 <div className="w-full">
                   <div className="flex items-center justify-between gap-2 mb-4">
                     <div className="h-11 w-11 rounded-xl bg-blue-500/10 border border-blue-500/15 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -124,7 +136,6 @@ export default function RecruiterJobsDashboard() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* Explicit Workstyle Status Badge */}
                       {remoteFlag ? (
                         <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-green-500/10 border border-green-500/20 text-green-400">
                           Remote
@@ -141,12 +152,10 @@ export default function RecruiterJobsDashboard() {
                     </div>
                   </div>
 
-                  {/* MAIN HEADER DETAILS SECTION */}
                   <h2 className="text-lg font-medium text-white tracking-tight line-clamp-1 group-hover:text-blue-400 transition-colors mb-1">
                     {job.title}
                   </h2>
 
-                  {/* Category and Contract Type Tags */}
                   <div className="flex items-center gap-2 text-xs text-gray-500 mb-4 capitalize">
                     <span className="text-gray-400 truncate max-w-[120px]">
                       {job.category}
@@ -157,9 +166,7 @@ export default function RecruiterJobsDashboard() {
                     </span>
                   </div>
 
-                  {/* DETAILS GRID INFO BLOCKS */}
                   <div className="flex flex-col gap-2.5 pt-3 border-t border-white/5 w-full text-xs">
-                    {/* Location Row */}
                     <div className="flex items-center gap-2 text-gray-400">
                       {remoteFlag ? (
                         <>
@@ -178,7 +185,6 @@ export default function RecruiterJobsDashboard() {
                       )}
                     </div>
 
-                    {/* Dynamic Compensation Value Readout */}
                     <div className="flex items-center gap-2 text-gray-300 font-medium">
                       <span className="text-gray-500 font-normal">
                         Compensation:
@@ -192,16 +198,12 @@ export default function RecruiterJobsDashboard() {
                   </div>
                 </div>
 
-                {/* BOTTOM COMPONENT FOOTER ROW: Applicant Counters & Deadlines */}
                 <div className="flex items-center justify-between gap-2 pt-4 mt-5 border-t border-white/5 w-full">
-                  {/* Pipeline Tracker */}
                   <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
-                    <Persons className="h-4 w-4 text-blue-400" />{" "}
-                    {/* 🚀 USING EXPORTED ICON */}
+                    <Persons className="h-4 w-4 text-blue-400" />
                     <span>0 applicants</span>
                   </div>
 
-                  {/* Application Deadline node display */}
                   <div className="flex items-center gap-1.5 text-gray-500 text-[11px]">
                     <Calendar className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{formatDate(job.deadline)}</span>

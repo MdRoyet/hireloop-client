@@ -3,18 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
-import {
-  Form,
-  Input,
-  TextArea,
-  Select,
-  ListBox,
-  Label,
-  Button,
-  Switch,
-} from "@heroui/react";
+import { Form, Select, ListBox, Label, Button, Switch } from "@heroui/react";
 import { Briefcase, Globe, ArrowRight } from "@gravity-ui/icons";
-import { createJobAction } from "@/lib/actions/jobs"; // 🚀 UPDATED IMPORT PATH TO MATCH YOUR FOLDER STRUCTURE
+import { createJobAction } from "@/lib/actions/jobs";
 
 export default function PostJobPage() {
   const router = useRouter();
@@ -24,16 +15,12 @@ export default function PostJobPage() {
   const [isRemote, setIsRemote] = useState(false);
   const [serverError, setServerError] = useState("");
 
-  const inputStyles = {
-    label: "text-sm font-medium text-gray-300 pb-1",
-    input: "text-white placeholder:text-gray-600 text-sm",
-    inputWrapper:
-      "bg-black/40 border border-white/10 hover:border-white/20 focus-within:border-blue-500 focus-within:!bg-black/60 shadow-none transition-all rounded-xl",
-    innerWrapper: "pb-0",
-  };
-
+  // Simplified semantic inputs to match our updated approach
+  const labelStyle = "text-sm font-medium text-gray-300 pb-1.5 block text-left";
+  const baseInputStyle =
+    "w-full h-11 bg-black/40 border border-white/10 hover:border-white/20 focus:border-white/30 focus:bg-black/60 text-white placeholder:text-gray-600 text-sm rounded-xl px-4 outline-none transition-all duration-200 shadow-none";
   const selectTriggerStyles =
-    "bg-black/40 border border-white/10 hover:border-white/20 data-[focus=true]:border-blue-500 data-[focus=true]:bg-black/60 shadow-none transition-all rounded-xl py-2.5 px-4 text-white w-full flex items-center justify-between";
+    "bg-black/40 border border-white/10 hover:border-white/20 data-[focus=true]:border-white/30 data-[focus=true]:bg-black/60 shadow-none transition-all rounded-xl py-2.5 px-4 text-white w-full h-11 flex items-center justify-between text-sm cursor-pointer";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,9 +34,10 @@ export default function PostJobPage() {
     data.status = "active";
     data.companyId = session?.user?.companyId || "auto-linked-id";
 
-    try {
-      console.log("Submitting new job to database:", data);
+    // 🚀 Binds the post directly to the recruiter!
+    data.recruiterId = session?.user?.id;
 
+    try {
       const result = await createJobAction(data);
 
       if (!result.success) {
@@ -60,7 +48,7 @@ export default function PostJobPage() {
         return;
       }
 
-      router.push("/dashboard/recruiter");
+      router.push("/dashboard/recruiter/jobs");
     } catch (error) {
       setServerError("An unexpected error occurred. Please try again.");
     } finally {
@@ -70,7 +58,7 @@ export default function PostJobPage() {
 
   return (
     <div className="max-w-4xl w-full mx-auto pb-12 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="mb-8">
+      <header className="mb-8 text-left">
         <h1 className="text-3xl font-medium text-white tracking-tight mb-2">
           Post a New Job
         </h1>
@@ -86,29 +74,29 @@ export default function PostJobPage() {
         className="flex flex-col gap-8 w-full"
       >
         {/* SECTION 1: Job Info */}
-        <section className="bg-[#161618] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 shadow-sm w-full">
+        <section className="bg-[#161618] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 shadow-sm w-full text-left">
           <h2 className="text-lg font-medium text-white border-b border-white/5 pb-4">
             1. Basic Information
           </h2>
 
-          <Input
-            name="title"
-            label="Job Title"
-            labelPlacement="outside"
-            placeholder="e.g. Senior Frontend Developer"
-            isRequired
-            classNames={inputStyles}
-          />
+          <div className="flex flex-col w-full">
+            <label className={labelStyle}>Job Title</label>
+            <input
+              required
+              name="title"
+              type="text"
+              placeholder="e.g. Senior Frontend Developer"
+              className={baseInputStyle}
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-2">
             <Select name="category" isRequired className="w-full">
-              <Label className="text-sm font-medium text-gray-300 pb-1 block">
-                Job Category
-              </Label>
+              <Label className={labelStyle}>Job Category</Label>
               <Select.Trigger className={selectTriggerStyles}>
                 <Select.Value
                   placeholder="Select a category"
-                  className="text-sm placeholder:text-gray-600 text-white"
+                  className="text-sm text-white"
                 />
                 <Select.Indicator />
               </Select.Trigger>
@@ -134,13 +122,11 @@ export default function PostJobPage() {
             </Select>
 
             <Select name="type" isRequired className="w-full">
-              <Label className="text-sm font-medium text-gray-300 pb-1 block">
-                Job Type
-              </Label>
+              <Label className={labelStyle}>Job Type</Label>
               <Select.Trigger className={selectTriggerStyles}>
                 <Select.Value
                   placeholder="Select job type"
-                  className="text-sm placeholder:text-gray-600 text-white"
+                  className="text-sm text-white"
                 />
                 <Select.Indicator />
               </Select.Trigger>
@@ -165,7 +151,7 @@ export default function PostJobPage() {
         </section>
 
         {/* SECTION 2: Compensation & Location */}
-        <section className="bg-[#161618] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 shadow-sm w-full">
+        <section className="bg-[#161618] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 shadow-sm w-full text-left">
           <h2 className="text-lg font-medium text-white border-b border-white/5 pb-4">
             2. Compensation & Location
           </h2>
@@ -176,13 +162,11 @@ export default function PostJobPage() {
               defaultSelectedKeys={["usd"]}
               className="w-full"
             >
-              <Label className="text-sm font-medium text-gray-300 pb-1 block">
-                Currency
-              </Label>
+              <Label className={labelStyle}>Currency</Label>
               <Select.Trigger className={selectTriggerStyles}>
                 <Select.Value
                   placeholder="Currency"
-                  className="text-sm placeholder:text-gray-600 text-white"
+                  className="text-sm text-white"
                 />
                 <Select.Indicator />
               </Select.Trigger>
@@ -201,23 +185,25 @@ export default function PostJobPage() {
               </Select.Popover>
             </Select>
 
-            <Input
-              name="minSalary"
-              type="number"
-              label="Minimum Salary"
-              labelPlacement="outside"
-              placeholder="e.g. 80000"
-              classNames={inputStyles}
-            />
+            <div className="flex flex-col w-full">
+              <label className={labelStyle}>Minimum Salary</label>
+              <input
+                name="minSalary"
+                type="number"
+                placeholder="e.g. 80000"
+                className={baseInputStyle}
+              />
+            </div>
 
-            <Input
-              name="maxSalary"
-              type="number"
-              label="Maximum Salary"
-              labelPlacement="outside"
-              placeholder="e.g. 120000"
-              classNames={inputStyles}
-            />
+            <div className="flex flex-col w-full">
+              <label className={labelStyle}>Maximum Salary</label>
+              <input
+                name="maxSalary"
+                type="number"
+                placeholder="e.g. 120000"
+                className={baseInputStyle}
+              />
+            </div>
           </div>
 
           <div className="py-2 mt-2 w-full animate-in fade-in zoom-in-95 duration-500">
@@ -250,75 +236,77 @@ export default function PostJobPage() {
 
           {!isRemote && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in fade-in zoom-in-95 duration-300">
-              <Input
-                name="city"
-                label="City"
-                labelPlacement="outside"
-                placeholder="e.g. San Francisco"
-                isRequired={!isRemote}
-                classNames={inputStyles}
-              />
-              <Input
-                name="country"
-                label="Country"
-                labelPlacement="outside"
-                placeholder="e.g. United States"
-                isRequired={!isRemote}
-                classNames={inputStyles}
-              />
+              <div className="flex flex-col w-full">
+                <label className={labelStyle}>City</label>
+                <input
+                  required={!isRemote}
+                  name="city"
+                  type="text"
+                  placeholder="e.g. San Francisco"
+                  className={baseInputStyle}
+                />
+              </div>
+              <div className="flex flex-col w-full">
+                <label className={labelStyle}>Country</label>
+                <input
+                  required={!isRemote}
+                  name="country"
+                  type="text"
+                  placeholder="e.g. United States"
+                  className={baseInputStyle}
+                />
+              </div>
             </div>
           )}
 
-          <div className="mt-2 sm:w-1/2">
-            <Input
+          <div className="flex flex-col w-full sm:w-1/2 mt-2">
+            <label className={labelStyle}>Application Deadline</label>
+            <input
+              required
               name="deadline"
               type="date"
-              label="Application Deadline"
-              labelPlacement="outside"
-              isRequired
-              classNames={{
-                ...inputStyles,
-                input:
-                  "text-white placeholder:text-gray-600 text-sm appearance-none",
-              }}
+              className={`${baseInputStyle} appearance-none`}
             />
           </div>
         </section>
 
         {/* SECTION 3: Job Description */}
-        <section className="bg-[#161618] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 shadow-sm w-full">
+        <section className="bg-[#161618] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col gap-6 shadow-sm w-full text-left">
           <h2 className="text-lg font-medium text-white border-b border-white/5 pb-4">
             3. Job Description
           </h2>
 
-          <TextArea
-            name="responsibilities"
-            label="Responsibilities"
-            labelPlacement="outside"
-            placeholder="What will the day-to-day work look like?"
-            minRows={4}
-            isRequired
-            classNames={inputStyles}
-          />
+          <div className="flex flex-col w-full">
+            <label className={labelStyle}>Responsibilities</label>
+            <textarea
+              required
+              name="responsibilities"
+              rows={4}
+              placeholder="What will the day-to-day work look like?"
+              className="w-full bg-black/40 border border-white/10 hover:border-white/20 focus:border-white/30 focus:bg-black/60 text-white placeholder:text-gray-600 text-sm rounded-xl p-4 outline-none transition-all duration-200 resize-none shadow-none"
+            />
+          </div>
 
-          <TextArea
-            name="requirements"
-            label="Requirements"
-            labelPlacement="outside"
-            placeholder="What skills, tools, and experiences are required?"
-            minRows={4}
-            isRequired
-            classNames={inputStyles}
-          />
+          <div className="flex flex-col w-full">
+            <label className={labelStyle}>Requirements</label>
+            <textarea
+              required
+              name="requirements"
+              rows={4}
+              placeholder="What skills, tools, and experiences are required?"
+              className="w-full bg-black/40 border border-white/10 hover:border-white/20 focus:border-white/30 focus:bg-black/60 text-white placeholder:text-gray-600 text-sm rounded-xl p-4 outline-none transition-all duration-200 resize-none shadow-none"
+            />
+          </div>
 
-          <TextArea
-            name="benefits"
-            label="Benefits (Optional)"
-            labelPlacement="outside"
-            placeholder="List perks, health insurance, PTO, etc."
-            minRows={3}
-            classNames={inputStyles}
-          />
+          <div className="flex flex-col w-full">
+            <label className={labelStyle}>Benefits (Optional)</label>
+            <textarea
+              name="benefits"
+              rows={3}
+              placeholder="List perks, health insurance, PTO, etc."
+              className="w-full bg-black/40 border border-white/10 hover:border-white/20 focus:border-white/30 focus:bg-black/60 text-white placeholder:text-gray-600 text-sm rounded-xl p-4 outline-none transition-all duration-200 resize-none shadow-none"
+            />
+          </div>
         </section>
 
         {/* SECTION 4: Auto-filled Company Info Display */}
@@ -327,7 +315,7 @@ export default function PostJobPage() {
             <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
               <Briefcase className="h-6 w-6 text-blue-400" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col text-left">
               <span className="text-sm font-medium text-white">
                 Posting on behalf of
               </span>
@@ -356,12 +344,11 @@ export default function PostJobPage() {
           >
             Cancel
           </Button>
-
           <Button
             type="submit"
             isLoading={loading}
             endContent={!loading && <ArrowRight className="h-4 w-4" />}
-            className="bg-white text-black font-semibold shadow-xl hover:bg-gray-200 px-8"
+            className="bg-white text-black font-semibold shadow-xl hover:bg-gray-200 px-8 cursor-pointer"
           >
             {loading ? "Posting Job..." : "Publish Job"}
           </Button>
