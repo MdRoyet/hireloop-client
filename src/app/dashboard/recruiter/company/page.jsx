@@ -3,15 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
-import {
-  Form,
-  Input,
-  TextArea,
-  Select,
-  ListBox,
-  Label,
-  Button,
-} from "@heroui/react";
+import { Form, Select, ListBox, Label, Button } from "@heroui/react";
 
 export default function CompanyPage() {
   const router = useRouter();
@@ -19,22 +11,17 @@ export default function CompanyPage() {
 
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [logoFile, setLogoFile] = useState(null); // 🚀 Stores the actual file binary object
   const [logoName, setLogoName] = useState("");
   const [logoPreview, setLogoPreview] = useState(null);
 
-  // Core visual theme properties matching image_48adc3.png preset
-  const inputStyles = {
-    label: "text-sm font-medium text-gray-300 pb-1.5",
-    input: "text-white placeholder:text-gray-600 text-sm",
-    inputWrapper:
-      "bg-black/40 border border-white/10 hover:border-white/20 focus-within:border-white/30 focus-within:!bg-black/60 shadow-none transition-all rounded-xl h-11",
-    innerWrapper: "pb-0",
-  };
-
+  // Consolidated semantic wrapper styling variables matching image_48adc3.png
+  const labelStyle = "text-sm font-medium text-gray-300 pb-1.5 block text-left";
+  const baseInputStyle =
+    "w-full h-11 bg-black/40 border border-white/10 hover:border-white/20 focus:border-white/30 focus:bg-black/60 text-white placeholder:text-gray-600 text-sm rounded-xl px-4 outline-none transition-all duration-200 shadow-none";
   const selectTriggerStyles =
-    "bg-black/40 border border-white/10 hover:border-white/20 data-[focus=true]:border-white/30 data-[focus=true]:bg-black/60 shadow-none transition-all rounded-xl py-2.5 px-4 text-white w-full h-11 flex items-center justify-between text-sm";
+    "bg-black/40 border border-white/10 hover:border-white/20 data-[focus=true]:border-white/30 data-[focus=true]:bg-black/60 shadow-none transition-all rounded-xl py-2.5 px-4 text-white w-full h-11 flex items-center justify-between text-sm cursor-pointer";
 
-  // Handles reading the local file binary string for instant preview rendering
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -42,6 +29,7 @@ export default function CompanyPage() {
         setServerError("Logo image size file must be under 5MB.");
         return;
       }
+      setLogoFile(file); // Saves the binary for the network payload step
       setLogoName(file.name);
       setLogoPreview(URL.createObjectURL(file));
     }
@@ -55,14 +43,49 @@ export default function CompanyPage() {
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
 
-    // Attach current user session contexts
     data.userId = session?.user?.id;
-    data.logoFile = logoName;
 
     try {
-      console.log("Pushing raw company payload to database pipeline:", data);
+      let uploadedUrl = "";
 
-      // Raw pipeline connection endpoint string
+      // 🚀 STEP 1: Process Image Upload to External API Service if file is present
+      if (logoFile) {
+        console.log("Initiating image uploading sequence to service...");
+        const imageFormData = new FormData();
+        imageFormData.append("image", logoFile); // Appends the file binary natively
+
+        const targetEndpoint = process.env.NEXT_PUBLIC_API_IMAGES_URL;
+
+        if (!targetEndpoint) {
+          throw new Error("Missing NEXT_PUBLIC_API_IMAGES_URL configuration.");
+        }
+
+        const imgResponse = await fetch(targetEndpoint, {
+          method: "POST",
+          body: imageFormData, // Sends the multipart data directly
+        });
+
+        const imgResult = await imgResponse.json();
+
+        if (!imgResponse.ok) {
+          throw new Error("Failed to upload company logo image to service.");
+        }
+
+        // Resolves standard image hosting response mappings dynamically (ImgBB, Cloudinary, etc.)
+        uploadedUrl =
+          imgResult.data?.url || imgResult.url || imgResult.secure_url || "";
+        console.log("Image upload successful! Live hosted URL:", uploadedUrl);
+      }
+
+      // 🚀 STEP 2: Bind the live image URL straight into our database collection metadata payload
+      data.logoUrl = uploadedUrl;
+      data.logoFile = logoName;
+
+      console.log(
+        "Pushing final company schema object down to MongoDB pipeline:",
+        data,
+      );
+
       const response = await fetch("http://localhost:5000/api/company", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,16 +93,16 @@ export default function CompanyPage() {
       });
 
       const result = await response.json();
+      if (!response.ok)
+        throw new Error(
+          result.error || "Failed to save registration metadata.",
+        );
 
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to process transaction rules.");
-      }
-
-      // Route cleanly to dashboard root upon complete data write synchronization
       router.push("/dashboard/recruiter");
     } catch (error) {
       setServerError(
-        error.message || "Could not register details. Check server connection.",
+        error.message ||
+          "An error occurred. Check your server connection pipelines.",
       );
     } finally {
       setLoading(false);
@@ -94,7 +117,7 @@ export default function CompanyPage() {
         className="bg-[#161618] border border-white/5 rounded-2xl w-full shadow-2xl flex flex-col overflow-hidden text-left"
       >
         {/* Header Block Section */}
-        <div className="p-6 sm:p-8 border-b border-white/5">
+        <div className="p-6 sm:p-8 border-b border-white/5 w-full">
           <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">
             Register New Company
           </h1>
@@ -103,24 +126,24 @@ export default function CompanyPage() {
           </p>
         </div>
 
-        {/* Core Multi-Column Form Body Block Area */}
+        {/* Form Body Block */}
         <div className="p-6 sm:p-8 flex flex-col gap-6 w-full">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
             {/* Field 1: Company Name */}
-            <Input
-              name="companyName"
-              label="Company Name"
-              labelPlacement="outside"
-              placeholder="e.g. Acme Corp"
-              isRequired
-              classNames={inputStyles}
-            />
+            <div className="flex flex-col w-full">
+              <label className={labelStyle}>Company Name</label>
+              <input
+                required
+                name="companyName"
+                type="text"
+                placeholder="e.g. Acme Corp"
+                className={baseInputStyle}
+              />
+            </div>
 
             {/* Field 2: Industry Selector */}
             <Select name="industry" isRequired className="w-full">
-              <Label className="text-sm font-medium text-gray-300 pb-1.5 block">
-                Industry / Category
-              </Label>
+              <Label className={labelStyle}>Industry / Category</Label>
               <Select.Trigger className={selectTriggerStyles}>
                 <Select.Value
                   placeholder="Technology"
@@ -146,38 +169,29 @@ export default function CompanyPage() {
               </Select.Popover>
             </Select>
 
-            {/* Field 3: Website URL with Static Domain Prefix Block */}
+            {/* Field 3: Website URL with Integrated Prefix Container */}
             <div className="flex flex-col w-full">
-              <label className="text-sm font-medium text-gray-300 pb-1.5">
-                Website URL
-              </label>
-              <Input
-                name="website"
-                placeholder="www.company.com"
-                isRequired
-                classNames={{
-                  ...inputStyles,
-                  label: "hidden",
-                }}
-                startContent={
-                  <div className="flex items-center justify-center bg-white/5 text-gray-400 text-xs px-3 h-11 -ml-3 mr-2 border-r border-white/10 rounded-l-xl select-none font-medium">
-                    https://
-                  </div>
-                }
-              />
+              <label className={labelStyle}>Website URL</label>
+              <div className="flex items-center w-full h-11 bg-black/40 border border-white/10 hover:border-white/20 focus-within:border-white/30 focus-within:bg-black/60 rounded-xl transition-all overflow-hidden">
+                <div className="bg-white/5 text-gray-400 text-xs px-4 h-full flex items-center border-r border-white/10 select-none font-medium shrink-0">
+                  https://
+                </div>
+                <input
+                  required
+                  name="website"
+                  type="text"
+                  placeholder="www.company.com"
+                  className="w-full h-full bg-transparent px-4 text-white placeholder:text-gray-600 text-sm outline-none"
+                />
+              </div>
             </div>
 
             {/* Field 4: Location Map Node Input */}
-            <Input
-              name="location"
-              label="Location"
-              labelPlacement="outside"
-              placeholder="City, Country"
-              isRequired
-              classNames={inputStyles}
-              startContent={
+            <div className="flex flex-col w-full">
+              <label className={labelStyle}>Location</label>
+              <div className="flex items-center w-full h-11 bg-black/40 border border-white/10 hover:border-white/20 focus-within:border-white/30 focus-within:bg-black/60 rounded-xl transition-all overflow-hidden px-4">
                 <svg
-                  className="h-4 w-4 text-gray-500 mr-1.5 shrink-0"
+                  className="h-4 w-4 text-gray-500 mr-2 shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -194,14 +208,19 @@ export default function CompanyPage() {
                     d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                   />
                 </svg>
-              }
-            />
+                <input
+                  required
+                  name="location"
+                  type="text"
+                  placeholder="City, Country"
+                  className="w-full h-full bg-transparent text-white placeholder:text-gray-600 text-sm outline-none"
+                />
+              </div>
+            </div>
 
-            {/* Field 5: Employee Counter Component */}
+            {/* Field 5: Employee Counter */}
             <Select name="employeeCount" isRequired className="w-full">
-              <Label className="text-sm font-medium text-gray-300 pb-1.5 block">
-                Employee Count Range
-              </Label>
+              <Label className={labelStyle}>Employee Count Range</Label>
               <Select.Trigger className={selectTriggerStyles}>
                 <Select.Value
                   placeholder="1-10 employees"
@@ -227,11 +246,9 @@ export default function CompanyPage() {
               </Select.Popover>
             </Select>
 
-            {/* Field 6: Interactive Logo Multi-State Upload Container Box */}
+            {/* Field 6: Live Image Upload File Picker Box Container */}
             <div className="flex flex-col w-full text-left">
-              <span className="text-sm font-medium text-gray-300 pb-1.5">
-                Company Logo
-              </span>
+              <span className={labelStyle}>Company Logo</span>
               <label className="h-11 border border-dashed border-white/10 hover:border-white/20 bg-black/40 hover:bg-black/50 transition-all rounded-xl flex items-center px-4 gap-3 cursor-pointer group overflow-hidden">
                 <input
                   type="file"
@@ -239,12 +256,12 @@ export default function CompanyPage() {
                   className="hidden"
                   onChange={handleLogoChange}
                 />
-                <div className="h-6 w-6 rounded bg-white/5 border border-white/5 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="h-6 w-6 rounded bg-white/5 border border-white/5 flex items-center justify-center shrink-0 overflow-hidden">
                   {logoPreview ? (
                     <img
                       src={logoPreview}
                       alt="Preview"
-                      className="h-full w-full object-cover rounded"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
                     <svg
@@ -276,20 +293,17 @@ export default function CompanyPage() {
             </div>
           </div>
 
-          {/* Field 7: Full Width Brief Description Box */}
-          <TextArea
-            name="description"
-            label="Brief Description"
-            labelPlacement="outside"
-            placeholder="Tell us about your company's mission and culture..."
-            isRequired
-            minRows={4}
-            classNames={{
-              ...inputStyles,
-              inputWrapper:
-                "h-auto py-3 bg-black/40 border border-white/10 hover:border-white/20 focus-within:border-white/30 focus-within:!bg-black/60 shadow-none transition-all rounded-xl",
-            }}
-          />
+          {/* Field 7: Description Text Box */}
+          <div className="flex flex-col w-full">
+            <label className={labelStyle}>Brief Description</label>
+            <textarea
+              required
+              name="description"
+              rows={4}
+              placeholder="Tell us about your company's mission and culture..."
+              className="w-full bg-black/40 border border-white/10 hover:border-white/20 focus:border-white/30 focus:bg-black/60 text-white placeholder:text-gray-600 text-sm rounded-xl p-4 outline-none transition-all duration-200 resize-none shadow-none"
+            />
+          </div>
 
           {serverError && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-medium text-red-400">
@@ -298,7 +312,7 @@ export default function CompanyPage() {
           )}
         </div>
 
-        {/* Bottom Shaded Actions Toolbar Panel Section */}
+        {/* Bottom Actions Shaded Control Panel Toolbar */}
         <div className="bg-black/20 border-t border-white/5 p-4 flex items-center justify-end gap-3 w-full">
           <Button
             type="button"
@@ -314,7 +328,7 @@ export default function CompanyPage() {
             isLoading={loading}
             className="bg-white text-black hover:bg-gray-200 font-medium px-6 rounded-xl text-sm shadow-xl transition-all h-10 cursor-pointer shrink-0"
           >
-            Register Company
+            {loading ? "Registering..." : "Register Company"}
           </Button>
         </div>
       </Form>
