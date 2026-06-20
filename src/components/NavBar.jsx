@@ -34,7 +34,7 @@ export default function NavBar() {
     const role = session?.user?.role;
     if (role === "recruiter") return "/dashboard/recruiter";
     if (role === "admin") return "/dashboard/admin";
-    return "/"; // Default fallback
+    return "/dashboard/job-seeker";
   };
 
   return (

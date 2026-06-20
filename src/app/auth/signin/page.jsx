@@ -37,8 +37,7 @@ export default function SignIn() {
     } else if (userRole === "admin") {
       router.push("/dashboard/admin");
     } else {
-      // Default fallback for Job Seekers
-      router.push("/");
+      router.push("/dashboard/job-seeker");
     }
   };
 

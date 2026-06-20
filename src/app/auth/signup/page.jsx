@@ -60,6 +60,21 @@ export default function SignUp() {
       return;
     }
 
+    try {
+      await fetch("/api/user/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          role: formData.role,
+          createdAt: new Date().toISOString(),
+        }),
+      });
+    } catch (syncError) {
+      console.error("Failed to sync billing profile:", syncError);
+    }
+
     setShowToast(true);
     setLoading(false);
 

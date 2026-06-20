@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { Form, Select, ListBox, Label, Button, Switch } from "@heroui/react";
 import { Briefcase, Globe, ArrowRight } from "@gravity-ui/icons";
@@ -14,6 +15,36 @@ export default function PostJobPage() {
   const [loading, setLoading] = useState(false);
   const [isRemote, setIsRemote] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [planStatus, setPlanStatus] = useState(null);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+
+  useEffect(() => {
+    async function fetchPlanStatus() {
+      const email = session?.user?.email;
+      if (!email) return;
+
+      try {
+        const res = await fetch("/api/user/plan-status", {
+          headers: {
+            "user-email": email,
+            "user-role": session.user.role || "recruiter",
+            "user-id": session.user.id || "",
+          },
+        });
+        if (res.ok) {
+          setPlanStatus(await res.json());
+        }
+      } catch (error) {
+        console.error("Failed to load recruiter plan status:", error);
+      } finally {
+        setLoadingPlan(false);
+      }
+    }
+
+    if (session?.user) {
+      fetchPlanStatus();
+    }
+  }, [session]);
 
   // Simplified semantic inputs to match our updated approach
   const labelStyle = "text-sm font-medium text-gray-300 pb-1.5 block text-left";
@@ -24,6 +55,14 @@ export default function PostJobPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (planStatus && !planStatus.canPost) {
+      setServerError(
+        "You have reached your active job post limit. Upgrade your plan to post more jobs.",
+      );
+      return;
+    }
+
     setLoading(true);
     setServerError("");
 
@@ -36,6 +75,7 @@ export default function PostJobPage() {
 
     // 🚀 Binds the post directly to the recruiter!
     data.recruiterId = session?.user?.id;
+    data.recruiterEmail = session?.user?.email;
 
     try {
       const result = await createJobAction(data);
@@ -67,6 +107,32 @@ export default function PostJobPage() {
           the role.
         </p>
       </header>
+
+      {!loadingPlan && planStatus && (
+        <div className="mb-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              Posting Plan
+            </p>
+            <p className="text-white font-semibold capitalize">
+              {planStatus.plan?.replace("recruiter_", "") || "Free"} plan
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              {planStatus.remaining === "unlimited"
+                ? "Unlimited active job posts"
+                : `${planStatus.remaining} active job post${planStatus.remaining === 1 ? "" : "s"} remaining`}
+            </p>
+          </div>
+          {!planStatus.canPost && (
+            <Link
+              href="/pricing"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white text-black text-sm font-semibold"
+            >
+              Upgrade Plan
+            </Link>
+          )}
+        </div>
+      )}
 
       <Form
         validationBehavior="native"

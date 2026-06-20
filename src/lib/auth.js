@@ -36,8 +36,12 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       role: {
-        type: "string", // This is explicitly required by Better Auth
+        type: "string",
         defaultValue: "job_seeker",
+      },
+      plan: {
+        type: "string",
+        defaultValue: "seeker_free",
       },
     },
   },

@@ -22,7 +22,6 @@ function JobApplicationFormContent() {
   const router = useRouter();
   const { data: session, isPending: sessionLoading } = useSession();
 
-  // Extract metadata passed via URL from the job details page
   const jobId = searchParams.get("jobId");
   const jobTitle = searchParams.get("jobTitle");
   const recruiterId = searchParams.get("recruiterId");
@@ -70,14 +69,17 @@ function JobApplicationFormContent() {
 
     setIsSubmitting(true);
     try {
-      // 🚀 THE COMPLETE DATA PROFILE: Captures absolutely everything to send straight to MongoDB
+      const applicantEmail = session?.user?.email || "No Email Provided";
+
       const payload = {
         jobId,
         jobTitle,
         recruiterId,
-        applicantId: session?.user?.id || session?.user?._id,
+        email: applicantEmail,
+        applicantId: applicantEmail,
         applicantName: session?.user?.name || "Anonymous Applicant",
-        applicantEmail: session?.user?.email || "No Email Provided",
+        applicantEmail,
+        applicantCreatedAt: session?.user?.createdAt,
         phone: formData.phone,
         resumeUrl: formData.resumeUrl,
         portfolioUrl: formData.portfolioUrl || "",
@@ -89,14 +91,36 @@ function JobApplicationFormContent() {
       const response = await applyForJobAction(payload);
 
       if (response.success) {
-        toast.success(
-          `Application for "${jobTitle}" successfully registered! 🎉`,
-        );
+        // Safe readout extraction matching applications.js payload formatting wrapper (.data)
+        const tokensRemaining = response.data?.remaining;
+
+        if (tokensRemaining === "unlimited") {
+          toast.success("Application submitted successfully!");
+        } else if (tokensRemaining > 0) {
+          toast.success(
+            `Application submitted! You have ${tokensRemaining} application credit${tokensRemaining === 1 ? "" : "s"} remaining this month.`,
+          );
+        } else {
+          toast.warning(
+            "Application submitted! You have used all credits on your current plan.",
+          );
+        }
+
         setTimeout(() => {
           router.push("/browse-jobs");
-        }, 2500);
+        }, 3000);
       } else {
-        toast.error(response.error || "Failed to submit application data.");
+        // Enforces UI visibility if the server action responds with standard quota errors
+        if (
+          response.error?.includes("expired") ||
+          response.error?.includes("free plan")
+        ) {
+          toast.error(
+            "🚫 Your free plan has expired! Please upgrade your account to make unlimited applications.",
+          );
+        } else {
+          toast.error(response.error || "Failed to submit application data.");
+        }
       }
     } catch (err) {
       toast.error("A networking compilation error occurred. Try again.");
@@ -118,7 +142,7 @@ function JobApplicationFormContent() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 text-left animate-in fade-in duration-500 relative">
-      <ToastContainer theme="dark" position="top-right" autoClose={3500} />
+      <ToastContainer theme="dark" position="top-right" autoClose={4000} />
 
       <div className="absolute top-20 left-1/3 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-40 right-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -202,9 +226,8 @@ function JobApplicationFormContent() {
 
             <div className="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 text-xs text-blue-200/60 leading-relaxed font-medium">
               💡 <span className="text-blue-300 font-semibold">Pro-tip:</span>{" "}
-              Ensure your cloud document authorization parameters are set to
-              &quot;Anyone with the link can view&quot; before transmitting
-              portfolio files or resume links.
+              Free Plan profiles allocation yields 3 entries per calendar month
+              window. Keep track of metrics here.
             </div>
           </div>
 
@@ -298,8 +321,8 @@ function JobApplicationFormContent() {
                       }
                     >
                       {isSubmitting
-                        ? "Transmitting Profile..."
-                        : "Submit Secure Application"}
+                        ? "Submitting Application..."
+                        : "Submit Application"}
                     </Button>
                   </div>
                 </form>

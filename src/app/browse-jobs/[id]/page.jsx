@@ -28,8 +28,12 @@ export default function JobDetailsPage() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isApplying, setIsApplying] = useState(false);
 
+  // 🚀 Quota tracker
+  const [status, setStatus] = useState(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+
+  // Load Job Details
   useEffect(() => {
     async function loadJobDetails() {
       if (!params?.id) return;
@@ -50,6 +54,34 @@ export default function JobDetailsPage() {
     loadJobDetails();
   }, [params.id]);
 
+  // 🚀 Live Quota Tracker Hook (Runs once we have a user session)
+  useEffect(() => {
+    async function fetchAccountQuota() {
+      const activeEmail = session?.user?.email || session?.email;
+      if (!activeEmail) return;
+
+      setLoadingStatus(true);
+      try {
+        const res = await fetch("/api/user/apply-status", {
+          method: "GET",
+          headers: { "user-email": activeEmail },
+        });
+        if (res.ok) {
+          const metricsData = await res.json();
+          setStatus(metricsData);
+        }
+      } catch (err) {
+        console.error("Failed to retrieve subscription quota:", err);
+      } finally {
+        setLoadingStatus(false);
+      }
+    }
+
+    if (session?.user) {
+      fetchAccountQuota();
+    }
+  }, [session]);
+
   const formatDate = (dateInput) => {
     if (!dateInput) return "No deadline";
     const date = new Date(dateInput);
@@ -62,9 +94,7 @@ export default function JobDetailsPage() {
         });
   };
 
-  // Secure Application Redirection Pipeline
-  const handleApplyClick = async () => {
-    // Case 1: Anonymous User -> Toastify first, then hard redirect to /auth/signin
+  const handleApplyClick = () => {
     if (!session?.user) {
       toast.warning(
         "🔒 Authentication required. Redirecting to sign-in portal...",
@@ -75,40 +105,38 @@ export default function JobDetailsPage() {
       return;
     }
 
-    // Case 2: Verification processing buffer
-    if (sessionLoading) {
-      toast.info("Verifying your profile session... please hold.");
-      return;
-    }
-
-    // Standardize text capitalization for safety checking
     const userRole = session.user.role?.toLowerCase();
-
-    // 🚀 FIXED: Added "job_seeker" (with underscore) to the valid verification array
     const validSeekerRoles = [
       "job-seeker",
       "job_seeker",
       "seeker",
       "candidate",
     ];
-    const isValidSeeker = validSeekerRoles.includes(userRole);
-
-    // Case 3: Logged in as Recruiter/Admin -> Hard Block with high-visibility Toast
-    if (!isValidSeeker) {
+    if (!validSeekerRoles.includes(userRole)) {
       toast.error(
-        `⛔ Prohibited: Accounts with the role "${session.user.role}" are not permitted to apply for positions.`,
+        `⛔ Prohibited: Role "${session.user.role}" cannot apply for positions.`,
       );
       return;
     }
 
-    // Case 4: Valid Job Seeker -> Packaging parameters and pushing to dashboard workspace form
-    setIsApplying(true);
-    toast.success("Preparing your application workspace... 🚀");
-    setTimeout(() => {
-      router.push(
-        `/dashboard/job-seeker?jobId=${job._id}&jobTitle=${encodeURIComponent(job.title)}&recruiterId=${job.recruiterId}`,
+    if (status && !status.canApply) {
+      toast.error(
+        "⚠️ Quota exhausted! Please upgrade your plan to apply for this job.",
       );
-    }, 1000);
+      return;
+    }
+
+    if (!job?.recruiterId) {
+      toast.error("This job is missing recruiter information. Cannot apply.");
+      return;
+    }
+
+    const query = new URLSearchParams({
+      jobId: String(job._id || params.id),
+      jobTitle: job.title || "Job",
+      recruiterId: job.recruiterId,
+    });
+    router.push(`/dashboard/job-seeker?${query.toString()}`);
   };
 
   if (loading) {
@@ -140,6 +168,10 @@ export default function JobDetailsPage() {
   }
 
   const isRemote = job.isRemote === "true" || job.isRemote === true;
+  const userRole = session?.user?.role?.toLowerCase();
+  const isRecruiter =
+    userRole &&
+    !["job-seeker", "job_seeker", "seeker", "candidate"].includes(userRole);
 
   return (
     <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-12 animate-in fade-in duration-500 text-left">
@@ -154,6 +186,7 @@ export default function JobDetailsPage() {
       </button>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Side: Main Job Information details */}
         <div className="flex-1 w-full flex flex-col gap-8">
           <div className="bg-[#161618] border border-white/5 rounded-3xl p-8 sm:p-10 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
@@ -199,7 +232,7 @@ export default function JobDetailsPage() {
           <div className="bg-[#161618] border border-white/5 rounded-3xl p-8 sm:p-10 shadow-xl flex flex-col gap-10">
             {job.responsibilities && (
               <section>
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-white mb-4">
                   What you&apos;ll do
                 </h2>
                 <div className="text-gray-400 leading-relaxed text-sm whitespace-pre-wrap">
@@ -209,7 +242,7 @@ export default function JobDetailsPage() {
             )}
             {job.requirements && (
               <section>
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-white mb-4">
                   Requirements
                 </h2>
                 <div className="text-gray-400 leading-relaxed text-sm whitespace-pre-wrap">
@@ -219,7 +252,7 @@ export default function JobDetailsPage() {
             )}
             {job.benefits && (
               <section>
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-white mb-4">
                   Benefits & Perks
                 </h2>
                 <div className="text-gray-400 leading-relaxed text-sm whitespace-pre-wrap">
@@ -230,22 +263,96 @@ export default function JobDetailsPage() {
           </div>
         </div>
 
-        <aside className="w-full lg:w-[360px] shrink-0 flex flex-col gap-6 sticky top-24">
+        {/* Right Side Sidebar: Contains Quota tracker sheet and Submission form inline */}
+        <aside className="w-full lg:w-[380px] shrink-0 flex flex-col gap-6 sticky top-24">
           <div className="bg-[#161618] border border-white/5 rounded-3xl p-6 shadow-xl flex flex-col gap-6">
-            <Button
-              onClick={handleApplyClick}
-              isLoading={isApplying}
-              className="w-full bg-white text-black font-semibold shadow-xl hover:bg-gray-200 h-12 text-base cursor-pointer"
-              endContent={!isApplying && <ArrowRight className="h-4 w-4" />}
-            >
-              {isApplying ? "Redirecting..." : "Apply for this position"}
-            </Button>
+            {/* 🚀 STEP 1: RENDER ACTIVE INLINE SUBMISSION WORKSPACE OR BLOCKED STATEMENTS */}
+            {sessionLoading || loadingStatus ? (
+              <div className="h-24 flex items-center justify-center bg-white/[0.02] border border-white/5 rounded-2xl animate-pulse">
+                <span className="text-xs text-gray-500">
+                  Evaluating profile data quotas...
+                </span>
+              </div>
+            ) : isRecruiter ? (
+              <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-xs text-red-400 font-medium leading-relaxed">
+                ⛔ Accounts configured with professional Recruiter status
+                profiles are restricted from parsing application pipelines.
+              </div>
+            ) : session?.user ? (
+              <div className="flex flex-col gap-4">
+                {/* 🚀 Dynamic Quota Dashboard Widget Display */}
+                {status && (
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+                        Quota Remaining
+                      </span>
+                      <span className="text-xs font-extrabold text-[#bef264] uppercase">
+                        {status.plan.replace("seeker_", "")} Plan
+                      </span>
+                    </div>
+                    <div className="text-lg font-black tracking-tight text-white">
+                      {status.remaining === "unlimited"
+                        ? "Unlimited App Credits"
+                        : `${status.remaining} left this month`}
+                    </div>
+
+                    {/* Tiny meter bar tracker */}
+                    {status.limit !== "unlimited" && (
+                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-1">
+                        <div
+                          className={`h-full transition-all duration-500 ${status.remaining === 0 ? "bg-red-500" : "bg-[#bef264]"}`}
+                          style={{
+                            width: `${Math.min((status.used / status.limit) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {status?.remaining === 0 ? (
+                  <div className="flex flex-col gap-2 w-full">
+                    <Button
+                      disabled
+                      className="w-full bg-red-500/10 text-red-400 border border-red-500/20 font-semibold h-12 text-sm cursor-not-allowed"
+                    >
+                      Limit Reached (0 Left)
+                    </Button>
+                    <Button
+                      onClick={() => router.push("/pricing")}
+                      className="w-full bg-white text-black font-semibold h-10 text-xs"
+                    >
+                      Upgrade Tier Plan to Apply
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleApplyClick}
+                    className="w-full bg-white text-black font-semibold shadow-xl hover:bg-gray-200 h-12 text-base cursor-pointer"
+                    endContent={<ArrowRight className="h-4 w-4" />}
+                  >
+                    Apply
+                  </Button>
+                )}
+              </div>
+            ) : (
+              /* Anonymous/Logged Out Sign-in CTA block */
+              <Button
+                onClick={handleApplyClick}
+                className="w-full bg-[#bef264] text-black font-semibold shadow-xl hover:bg-[#d9f99d] h-12 text-base cursor-pointer"
+                endContent={<ArrowRight className="h-4 w-4" />}
+              >
+                Sign In to Apply
+              </Button>
+            )}
 
             <p className="text-xs text-center text-gray-500 font-medium px-4">
               Application closes on{" "}
               <span className="text-gray-300">{formatDate(job.deadline)}</span>
             </p>
 
+            {/* Standard Job parameters layout blocks below */}
             <div className="border-t border-white/5 pt-6 flex flex-col gap-5">
               <div className="flex items-start gap-4">
                 <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 shrink-0">
